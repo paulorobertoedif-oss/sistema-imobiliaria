@@ -9,8 +9,6 @@ st.set_page_config(page_title="Sistema Imobiliária", layout="wide")
 # --- SISTEMA DE LOGIN SIMPLES ---
 def check_password():
     """Retorna True se o usuário acertar a senha."""
-    
-    # Se a senha ainda não foi digitada ou está errada
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
@@ -18,25 +16,23 @@ def check_password():
         st.title("🔒 Acesso Restrito - Imobiliária")
         password = st.text_input("Digite a senha de acesso", type="password")
         
-        # A senha correta está configurada nos 'Segredos' do Streamlit
         if st.button("Entrar"):
+            # Verifica se a senha bate com a configurada nos Secrets
             if password == st.secrets["general"]["system_password"]:
                 st.session_state["password_correct"] = True
-                st.rerun()  # Recarrega a página para entrar
+                st.rerun()
             else:
                 st.error("Senha incorreta.")
         return False
     return True
 
 if not check_password():
-    st.stop()  # Para a execução aqui se não estiver logado
+    st.stop()
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
-# Usa o cache para não conectar toda vez que alguém clica num botão
 @st.cache_resource
 def get_connection():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # Pega as credenciais dos 'Segredos' do Streamlit
     creds_dict = dict(st.secrets["gcp_service_account"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
@@ -45,12 +41,11 @@ def get_connection():
 # --- FUNÇÕES DE DADOS ---
 def load_data(client):
     try:
-        # Substitua pelo NOME EXATO da sua planilha no Google
         sheet = client.open("Banco_Imoveis_Imobiliaria").sheet1
         data = sheet.get_all_records()
         return pd.DataFrame(data)
     except Exception as e:
-        st.error(f"Erro ao carregar planilha. Verifique se o nome está correto e se o robô tem acesso. Erro: {e}")
+        st.error(f"Erro ao carregar planilha. Verifique o nome ou conexão. Detalhe: {e}")
         return pd.DataFrame()
 
 def save_data(client, dados):
@@ -63,42 +58,50 @@ client = get_connection()
 
 st.title("🏢 Gestão de Imóveis")
 
-# Abas para separar Cadastro de Busca
 tab1, tab2 = st.tabs(["🔍 Buscar Imóveis", "📝 Novo Cadastro"])
 
 # --- ABA 1: BUSCA E FILTROS ---
 with tab1:
     st.header("Biblioteca de Anúncios")
     
-    # Botão para atualizar dados manualmente
     if st.button("🔄 Atualizar Tabela"):
         st.cache_data.clear()
         
     df = load_data(client)
     
     if not df.empty:
-        # Filtros na barra lateral ou topo
-        col1, col2, col3 = st.columns(3)
+        # AGORA TEMOS 4 COLUNAS PARA OS FILTROS
+        col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            filtro_bairro = st.text_input("Filtrar por Bairro")
+            filtro_codigo = st.text_input("Filtrar por Código")
         with col2:
-            filtro_quartos = st.text_input("Filtrar por Quartos (ex: 2Q)")
+            filtro_bairro = st.text_input("Filtrar por Bairro")
         with col3:
+            filtro_quartos = st.text_input("Filtrar por Quartos (ex: 2Q)")
+        with col4:
             filtro_valor_max = st.number_input("Valor Máximo", min_value=0.0, value=0.0, step=1000.0)
 
         # Lógica de Filtragem
         df_filtrado = df.copy()
         
-        # Converte a coluna Valor para número para poder filtrar (remove R$ e pontos)
-        # Assumindo que no sheets está salvo limpo, mas garantindo:
+        # Garante que Valor é número
         df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce').fillna(0)
 
+        # 1. Filtro de Código (NOVO)
+        if filtro_codigo:
+            # Converte para texto (str) para evitar erro se o código for só número
+            df_filtrado = df_filtrado[df_filtrado['Código'].astype(str).str.contains(filtro_codigo, case=False)]
+
+        # 2. Filtro de Bairro
         if filtro_bairro:
             df_filtrado = df_filtrado[df_filtrado['Bairro'].astype(str).str.contains(filtro_bairro, case=False)]
         
+        # 3. Filtro de Quartos
         if filtro_quartos:
             df_filtrado = df_filtrado[df_filtrado['Quartos'].astype(str).str.contains(filtro_quartos, case=False)]
             
+        # 4. Filtro de Valor
         if filtro_valor_max > 0:
             df_filtrado = df_filtrado[df_filtrado['Valor'] <= filtro_valor_max]
 
@@ -106,8 +109,9 @@ with tab1:
         st.dataframe(
             df_filtrado, 
             column_config={
-                "Link Drive": st.column_config.LinkColumn("Link Drive"), # Transforma em link clicável
-                "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f")
+                "Link Drive": st.column_config.LinkColumn("Link Drive"),
+                "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f"),
+                "Código": st.column_config.TextColumn("Código") # Garante que o código apareça como texto
             },
             hide_index=True,
             use_container_width=True
@@ -146,7 +150,6 @@ with tab2:
             if not codigo or not bairro:
                 st.error("Código e Bairro são obrigatórios!")
             else:
-                # Processar quartos
                 lista_quartos = []
                 if flat: lista_quartos.append("Flat")
                 if q1: lista_quartos.append("1Q")
@@ -155,6 +158,5 @@ with tab2:
                 if q4: lista_quartos.append("4Q+")
                 quartos_str = ", ".join(lista_quartos)
                 
-                # Dados para salvar
                 nova_linha = [codigo, valor, quartos_str, bairro, endereco, entrega, construtora, link_drive]
                 save_data(client, nova_linha)
