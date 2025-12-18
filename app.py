@@ -107,7 +107,7 @@ with tab1:
                 "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f"),
                 "Código": st.column_config.TextColumn("Código"),
                 "Telefone": st.column_config.TextColumn("Contato"),
-                "Empreendimento": st.column_config.TextColumn("Empreendimento", width="medium") # Novo
+                "Empreendimento": st.column_config.TextColumn("Empreendimento", width="medium")
             },
             hide_index=True,
             use_container_width=True
@@ -127,7 +127,7 @@ with tab2:
         valor = col_b.number_input("Valor (R$)", min_value=0.0, step=100.0)
         
         # Linha 2
-        empreendimento = col_a.text_input("Nome do Empreendimento") # NOVO CAMPO
+        empreendimento = col_a.text_input("Nome do Empreendimento")
         construtora = col_b.text_input("Nome da Construtora")
         
         # Linha 3
@@ -161,6 +161,8 @@ with tab2:
                 if q4: lista_quartos.append("4Q+")
                 quartos_str = ", ".join(lista_quartos)
                 
-                # Ordem: Codigo, Valor, Quartos, Bairro, Endereco, Entrega, Construtora, Link, Telefone, Empreendimento
-                nova_linha = [codigo, valor, quartos_str, bairro, endereco, entrega, construtora, link_drive, telefone, empreendimento]
+                # --- AQUI ESTÁ A MUDANÇA ---
+                # Nova Ordem: Codigo, Empreendimento, Valor, Quartos, Bairro, Endereco, Entrega, Construtora, Link, Telefone
+                nova_linha = [codigo, empreendimento, valor, quartos_str, bairro, endereco, entrega, construtora, link_drive, telefone]
+                
                 save_data(client, nova_linha)
