@@ -99,14 +99,15 @@ with tab1:
         if filtro_valor_max > 0:
             df_filtrado = df_filtrado[df_filtrado['Valor'] <= filtro_valor_max]
 
-        # Mostra a tabela (Agora com Telefone)
+        # Configuração das Colunas para Exibição
         st.dataframe(
             df_filtrado, 
             column_config={
                 "Link Drive": st.column_config.LinkColumn("Link Drive"),
                 "Valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f"),
                 "Código": st.column_config.TextColumn("Código"),
-                "Telefone": st.column_config.TextColumn("Contato") # Mostra como 'Contato' na tabela
+                "Telefone": st.column_config.TextColumn("Contato"),
+                "Empreendimento": st.column_config.TextColumn("Empreendimento", width="medium") # Novo
             },
             hide_index=True,
             use_container_width=True
@@ -126,11 +127,14 @@ with tab2:
         valor = col_b.number_input("Valor (R$)", min_value=0.0, step=100.0)
         
         # Linha 2
-        construtora = col_a.text_input("Nome da Construtora")
-        telefone = col_b.text_input("Telefone para Contato") # NOVO CAMPO
+        empreendimento = col_a.text_input("Nome do Empreendimento") # NOVO CAMPO
+        construtora = col_b.text_input("Nome da Construtora")
         
         # Linha 3
-        entrega = st.text_input("Previsão de Entrega")
+        telefone = col_a.text_input("Telefone para Contato")
+        entrega = col_b.text_input("Previsão de Entrega")
+        
+        # Resto
         bairro = st.text_input("Bairro")
         endereco = st.text_input("Endereço Completo")
         link_drive = st.text_input("Link do Drive (Pasta do Imóvel)")
@@ -157,7 +161,6 @@ with tab2:
                 if q4: lista_quartos.append("4Q+")
                 quartos_str = ", ".join(lista_quartos)
                 
-                # Ordem dos dados deve bater com a planilha
-                # Codigo, Valor, Quartos, Bairro, Endereco, Entrega, Construtora, Link, Telefone
-                nova_linha = [codigo, valor, quartos_str, bairro, endereco, entrega, construtora, link_drive, telefone]
+                # Ordem: Codigo, Valor, Quartos, Bairro, Endereco, Entrega, Construtora, Link, Telefone, Empreendimento
+                nova_linha = [codigo, valor, quartos_str, bairro, endereco, entrega, construtora, link_drive, telefone, empreendimento]
                 save_data(client, nova_linha)
